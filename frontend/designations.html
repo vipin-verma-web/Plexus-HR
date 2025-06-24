@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plexus HR - Designations</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Plexus HR</h1>
+        </header>
+        <nav>
+            <ul>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li class="admin-only"><a href="employees.html">Employees</a></li>
+                <li class="admin-only"><a href="add-employee.html">Add Employee</a></li>
+                <li class="admin-only"><a href="departments.html">Departments</a></li>
+                <li class="admin-only"><a href="designations.html">Designations</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+ 
+        <h2>Manage Designations</h2>
+ 
+        <form id="designationForm">
+            <label for="designationName">Designation Name:</label>
+            <input type="text" id="designationName" name="designationName" required>
+           
+            <div class="button-group">
+                <button type="button" id="addDesignationBtn">Add Designation</button>
+                <button type="button" id="updateDesignationBtn" style="display: none;">Update Designation</button>
+                <button type="button" id="cancelDesignationEditBtn" style="display: none;">Cancel</button>
+            </div>
+        </form>
+ 
+        <h3>Existing Designations</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th class="admin-only">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="designationTableBody">
+                </tbody>
+        </table>
+    </div>
+ 
+    <script src="js/script.js"></script>
+</body>
+</html>
+ 

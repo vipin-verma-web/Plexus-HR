@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plexus HR - Employees</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Plexus HR</h1>
+        </header>
+        <nav>
+            <ul>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li class="admin-only"><a href="employees.html">Employees</a></li>
+                <li class="admin-only"><a href="add-employee.html">Add Employee</a></li>
+                <li class="admin-only"><a href="departments.html">Departments</a></li>
+                <li class="admin-only"><a href="designations.html">Designations</a></li>
+                <li><a href="#" id="logoutBtn">Logout</a></li>
+            </ul>
+        </nav>
+ 
+        <h2>Employee List</h2>
+ 
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Department</th>
+                    <th>Designation</th>
+                    <th>Status</th>
+                    <th class="admin-only">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="employeeTableBody">
+                </tbody>
+        </table>
+    </div>
+ 
+    <script src="js/script.js"></script>
+</body>
+</html>
+ 
