@@ -11,6 +11,7 @@ function showMessage(message, type) {
     messageDiv.textContent = message;
  
     const container = document.querySelector('.container') || document.body;
+    // Prepend to body or container to ensure it's visible at the top
     container.prepend(messageDiv);
  
     // Automatically remove the message after 5 seconds
@@ -22,10 +23,49 @@ function showMessage(message, type) {
 function formatDateForInput(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
+    // Ensure date is valid before formatting
+    if (isNaN(date.getTime())) {
+        console.warn('Invalid date string provided to formatDateForInput:', dateString);
+        return '';
+    }
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+ 
+/**
+ * Shows a custom confirmation modal.
+ * @param {string} message - The message to display in the modal.
+ * @returns {Promise<boolean>} - Resolves to true if confirmed, false if cancelled.
+ */
+function showConfirmModal(message) {
+    return new Promise((resolve) => {
+        const modalOverlay = document.getElementById('confirmationModal');
+        const modalMessage = document.getElementById('modalMessage');
+        const modalConfirmBtn = document.getElementById('modalConfirmBtn');
+        const modalCancelBtn = document.getElementById('modalCancelBtn');
+ 
+        modalMessage.textContent = message;
+        modalOverlay.classList.add('active');
+ 
+        const handleConfirm = () => {
+            modalOverlay.classList.remove('active');
+            modalConfirmBtn.removeEventListener('click', handleConfirm);
+            modalCancelBtn.removeEventListener('click', handleCancel);
+            resolve(true);
+        };
+ 
+        const handleCancel = () => {
+            modalOverlay.classList.remove('active');
+            modalConfirmBtn.removeEventListener('click', handleConfirm);
+            modalCancelBtn.removeEventListener('click', handleCancel);
+            resolve(false);
+        };
+ 
+        modalConfirmBtn.addEventListener('click', handleConfirm);
+        modalCancelBtn.addEventListener('click', handleCancel);
+    });
 }
  
 // --- Navigation and Routing (Simple) ---
@@ -168,7 +208,13 @@ async function renderEmployees(employees) {
     const tableBody = document.getElementById('employeeTableBody');
     if (!tableBody) return; // Ensure element exists on the page
  
-    tableBody.innerHTML = '';
+    tableBody.innerHTML = ''; // Clear existing rows
+    if (employees.length === 0) {
+        const noDataRow = tableBody.insertRow();
+        noDataRow.innerHTML = '<td colspan="7" class="px-6 py-4 whitespace-nowrap text-center text-gray-500">No employees found.</td>';
+        return;
+    }
+ 
     const departments = await fetchDepartments();
     const designations = await fetchDesignations();
  
@@ -202,15 +248,65 @@ async function renderEmployees(employees) {
         actionCell.appendChild(deleteBtn);
     });
 }
-// Assuming API_BASE_URL and showMessage are defined elsewhere
+ 
+/**
+ * Validates employee form data.
+ * @param {HTMLFormElement} form - The employee form element.
+ * @returns {boolean} - True if all validations pass, false otherwise.
+ */
+function validateEmployeeForm(form) {
+    const dobInput = form.dateOfBirth.value;
+    const dojInput = form.dateOfJoining.value;
+    const phoneNumber = form.phoneNumber.value;
+    const emergencyContactPhone = form.emergencyContactPhone.value;
+ 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Normalize today's date to midnight for comparison
+ 
+    // Date of Birth Validation (not in the future)
+    if (dobInput) {
+        const dobDate = new Date(dobInput);
+        if (dobDate > today) {
+            showMessage('Date of Birth cannot be a future date.', 'error');
+            return false;
+        }
+    }
+ 
+    // Date of Joining Validation (not in the past, i.e., today or future)
+    if (dojInput) {
+        const dojDate = new Date(dojInput);
+        if (dojDate < today) {
+            showMessage('Date of Joining cannot be a past date.', 'error');
+            return false;
+        }
+    }
+ 
+    // Phone Number Validation (10 digits)
+    if (phoneNumber && !/^\d{10}$/.test(phoneNumber)) {
+        showMessage('Phone Number must be exactly 10 digits.', 'error');
+        return false;
+    }
+ 
+    // Emergency Contact Phone Validation (10 digits)
+    if (emergencyContactPhone && !/^\d{10}$/.test(emergencyContactPhone)) {
+        showMessage('Emergency Contact Phone must be exactly 10 digits.', 'error');
+        return false;
+    }
+ 
+    return true; // All validations passed
+}
  
 /**
  * Handles adding a new employee.
  * @param {Event} event - The form submission event.
  */
 async function addEmployee(event) {
-    event.preventDefault();
     const form = event.target;
+ 
+    // Run client-side validation
+    if (!validateEmployeeForm(form)) {
+        return; // Stop if validation fails
+    }
  
     const employeeData = {
         employeeId: form.employeeId.value, // Employee ID might be auto-generated by backend, or entered for new. Adjust as per your system.
@@ -268,13 +364,17 @@ async function addEmployee(event) {
  * @param {Event} event - The form submission event.
  */
 async function updateEmployee(event) {
-    event.preventDefault();
     const form = event.target;
     const employeeId = form.employeeId.value;
  
     if (!employeeId) {
         showMessage('Employee ID is required for updating!', 'error');
         return;
+    }
+ 
+    // Run client-side validation
+    if (!validateEmployeeForm(form)) {
+        return; // Stop if validation fails
     }
  
     const employeeData = {
@@ -328,16 +428,13 @@ async function updateEmployee(event) {
     }
 }
  
-// You would then call these functions based on your form's context.
-// For example, if you have two separate forms or
-// a single form whose submission handler determines whether to add or update.
- 
 // Example of a combined handler for a single form that handles both
-async function handleEmployeeFormSubmit(event) {
-    event.preventDefault();
+async function addOrUpdateEmployee(event) {
+    event.preventDefault(); // Prevent default form submission
     const form = event.target;
-    const employeeId = form.employeeId.value;
-    const isUpdate = !!employeeId;
+    const employeeId = form.employeeId.value.trim(); // Trim to check for empty string
+ 
+    const isUpdate = !!employeeId; // If employeeId is present, it's an update
  
     if (isUpdate) {
         await updateEmployee(event); // Pass the original event to updateEmployee
@@ -346,15 +443,10 @@ async function handleEmployeeFormSubmit(event) {
     }
 }
  
-// Attach this handler to your form
-// const employeeForm = document.getElementById('employeeForm');
-// if (employeeForm) {
-//     employeeForm.addEventListener('submit', handleEmployeeFormSubmit);
-// }
- 
  
 async function deleteEmployee(employeeId) {
-    if (!confirm(`Are you sure you want to delete employee with ID: ${employeeId}?`)) {
+    const confirmed = await showConfirmModal(`Are you sure you want to delete employee with ID: ${employeeId}?`);
+    if (!confirmed) {
         return;
     }
  
@@ -393,33 +485,40 @@ async function loadEmployeeForEdit() {
             const employee = await response.json();
            
             // Populate form fields
-            document.getElementById('firstName').value = employee.firstName;
-            document.getElementById('lastName').value = employee.lastName;
+            document.getElementById('firstName').value = employee.firstName || '';
+            document.getElementById('lastName').value = employee.lastName || '';
             document.getElementById('dateOfBirth').value = formatDateForInput(employee.dateOfBirth);
-            document.getElementById('gender').value = employee.gender;
-            document.getElementById('email').value = employee.email;
-            document.getElementById('phoneNumber').value = employee.phoneNumber;
-            document.getElementById('address').value = employee.address;
+            document.getElementById('gender').value = employee.gender || '';
+            document.getElementById('email').value = employee.email || '';
+            document.getElementById('phoneNumber').value = employee.phoneNumber || '';
+            document.getElementById('address').value = employee.address || '';
             document.getElementById('dateOfJoining').value = formatDateForInput(employee.dateOfJoining);
-            document.getElementById('departmentId').value = employee.departmentId;
-            document.getElementById('designationId').value = employee.designationId;
-            document.getElementById('basicSalary').value = employee.basicSalary;
-            document.getElementById('bankAccountNumber').value = employee.bankAccountNumber;
-            document.getElementById('emergencyContactName').value = employee.emergencyContactName;
-            document.getElementById('emergencyContactPhone').value = employee.emergencyContactPhone;
-            document.getElementById('status').value = employee.status;
+            document.getElementById('departmentId').value = employee.departmentId || '';
+            document.getElementById('designationId').value = employee.designationId || '';
+            document.getElementById('basicSalary').value = employee.basicSalary || '';
+            document.getElementById('bankAccountNumber').value = employee.bankAccountNumber || '';
+            document.getElementById('emergencyContactName').value = employee.emergencyContactName || '';
+            document.getElementById('emergencyContactPhone').value = employee.emergencyContactPhone || '';
+            document.getElementById('status').value = employee.status || '';
             document.getElementById('terminationDate').value = formatDateForInput(employee.terminationDate);
-            document.getElementById('terminationReason').value = employee.terminationReason;
+            document.getElementById('terminationReason').value = employee.terminationReason || '';
  
         } catch (error) {
             console.error('Error loading employee for edit:', error);
             showMessage('Failed to load employee for editing.', 'error');
+            // Optionally redirect back to employee list if load fails
+            setTimeout(() => {
+                window.location.href = 'employees.html';
+            }, 1500);
         }
     } else {
         document.getElementById('formTitle').textContent = 'Add New Employee';
         document.getElementById('employeeId').readOnly = false;
         // Optionally clear form fields for new entry
-        document.getElementById('addEmployeeForm').reset();
+        const addEmployeeForm = document.getElementById('addEmployeeForm');
+        if (addEmployeeForm) {
+            addEmployeeForm.reset(); // Resets all form fields
+        }
     }
 }
  
@@ -428,10 +527,15 @@ async function loadEmployeeForEdit() {
 async function fetchAndRenderDepartments() {
     const tableBody = document.getElementById('departmentTableBody');
     if (!tableBody) return;
-    tableBody.innerHTML = '';
+    tableBody.innerHTML = ''; // Clear existing rows
  
     try {
         const departments = await fetchDepartments();
+        if (departments.length === 0) {
+            const noDataRow = tableBody.insertRow();
+            noDataRow.innerHTML = '<td colspan="3" class="px-6 py-4 whitespace-nowrap text-center text-gray-500">No departments found.</td>';
+            return;
+        }
         departments.forEach(dept => {
             const row = tableBody.insertRow();
             row.insertCell().textContent = dept.departmentId;
@@ -542,7 +646,8 @@ function resetDepartmentForm() {
 }
  
 async function deleteDepartment(departmentId) {
-    if (!confirm(`Are you sure you want to delete department ID: ${departmentId}?`)) {
+    const confirmed = await showConfirmModal(`Are you sure you want to delete department ID: ${departmentId}?`);
+    if (!confirmed) {
         return;
     }
  
@@ -568,10 +673,15 @@ async function deleteDepartment(departmentId) {
 async function fetchAndRenderDesignations() {
     const tableBody = document.getElementById('designationTableBody');
     if (!tableBody) return;
-    tableBody.innerHTML = '';
+    tableBody.innerHTML = ''; // Clear existing rows
  
     try {
         const designations = await fetchDesignations();
+        if (designations.length === 0) {
+            const noDataRow = tableBody.insertRow();
+            noDataRow.innerHTML = '<td colspan="3" class="px-6 py-4 whitespace-nowrap text-center text-gray-500">No designations found.</td>';
+            return;
+        }
         designations.forEach(desg => {
             const row = tableBody.insertRow();
             row.insertCell().textContent = desg.designationId;
@@ -682,7 +792,8 @@ function resetDesignationForm() {
 }
  
 async function deleteDesignation(designationId) {
-    if (!confirm(`Are you sure you want to delete designation ID: ${designationId}?`)) {
+    const confirmed = await showConfirmModal(`Are you sure you want to delete designation ID: ${designationId}?`);
+    if (!confirmed) {
         return;
     }
  
@@ -731,6 +842,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const departmentForm = document.getElementById('departmentForm');
     if (departmentForm) {
         fetchAndRenderDepartments();
+        // Use form.addEventListener('submit', ...) for buttons inside form for proper submission handling
         document.getElementById('addDepartmentBtn').addEventListener('click', addDepartment);
         document.getElementById('updateDepartmentBtn').addEventListener('click', updateDepartment);
         document.getElementById('cancelDepartmentEditBtn').addEventListener('click', cancelDepartmentEdit);
@@ -740,9 +852,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const designationForm = document.getElementById('designationForm');
     if (designationForm) {
         fetchAndRenderDesignations();
+        // Use form.addEventListener('submit', ...) for buttons inside form for proper submission handling
         document.getElementById('addDesignationBtn').addEventListener('click', addDesignation);
         document.getElementById('updateDesignationBtn').addEventListener('click', updateDesignation);
         document.getElementById('cancelDesignationEditBtn').addEventListener('click', cancelDesignationEdit);
     }
 });
+ 
  
